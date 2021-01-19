@@ -9,6 +9,7 @@ python = "^3.8"
 pymongo = "^3.11.2"
 bson = "^0.5.10"
 kink = "^0.3.6"
+requests = "^2.25.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
