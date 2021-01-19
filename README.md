@@ -22,6 +22,13 @@ $ poetry run pre-commit install
 $ export MONGO_HOST=localhost
 ```
 
+## Run
+
+1. Run importer
+```
+$ poetry run python main.py
+```
+
 ### Testing
 
 1. Run mongodb:
