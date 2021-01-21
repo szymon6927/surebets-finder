@@ -14,3 +14,6 @@ class RawContentRepository(Protocol):  # pragma: no cover
 
     def get_all_unprocessed(self) -> List[RawContent]:
         ...
+
+    def save(self, raw_content: RawContent) -> None:
+        ...
