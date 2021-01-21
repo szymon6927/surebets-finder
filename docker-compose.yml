@@ -1,0 +1,9 @@
+version: "3.7"
+
+services:
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - ./data/mongo:/data/db
+    ports:
+      - "27017-27019:27017-27019"
