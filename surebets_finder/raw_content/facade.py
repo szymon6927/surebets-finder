@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from logging import Logger
 from typing import List
 
 from bson.objectid import ObjectId
@@ -20,8 +21,9 @@ class RawContentDTO:
 
 @inject
 class RawContentFacade:
-    def __init__(self, repository: RawContentRepository):
+    def __init__(self, repository: RawContentRepository, logger: Logger):
         self._repository = repository
+        self._logger = logger
 
     def _to_dto(self, raw_content: RawContent) -> RawContentDTO:
         return RawContentDTO(
@@ -29,11 +31,15 @@ class RawContentFacade:
         )
 
     def get_all_unprocessed_raw_contents(self) -> List[RawContentDTO]:
+        self._logger.info("Getting all unprocessed raw contents")
+
         records = self._repository.get_all_unprocessed()
 
         return [self._to_dto(record) for record in records]
 
     def mark_raw_content_as_processed(self, raw_content_id: ObjectId) -> None:
+        self._logger.info(f"Marking raw_content with id={raw_content_id} as processed")
+
         raw_content = self._repository.get(raw_content_id)
 
         raw_content.was_processed = True

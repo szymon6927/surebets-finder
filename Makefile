@@ -13,7 +13,7 @@ mypy:
 	poetry run mypy surebets_finder
 
 test:
-	poetry run pytest
+	poetry run pytest -m "not slow"
 
 lint: isort black flake8 mypy
 
