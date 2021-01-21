@@ -24,9 +24,14 @@ $ export MONGO_HOST=localhost
 
 ## Run
 
-1. Run importer
+1. Run importer for websites raw content
 ```
-$ poetry run python main.py
+$ poetry run surebets_finder import-raw-content
+```
+
+2. Run importer for finding bets
+```
+$ poetry run surebets_finder import-bets
 ```
 
 ### Testing

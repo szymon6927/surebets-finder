@@ -51,6 +51,19 @@ class MongoDBRawContentRepository(RawContentRepository):
         self._collection.insert_one(document)
 
     def get_all_unprocessed(self) -> List[RawContent]:
-        documents = self._collection.find({"was_processed": True})
+        documents = self._collection.find({"was_processed": False})
 
         return [self._to_entity(document) for document in documents]
+
+    def save(self, raw_content: RawContent) -> None:
+        query = {"_id": raw_content.id}
+        to_update = {
+            "$set": {
+                "content": raw_content.content,
+                "category": raw_content.category.value,
+                "provider": raw_content.provider.value,
+                "was_processed": raw_content.was_processed,
+            }
+        }
+
+        self._collection.update_one(query, to_update)

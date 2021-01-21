@@ -1,0 +1,2 @@
+class BetNotFoundError(Exception):
+    pass
