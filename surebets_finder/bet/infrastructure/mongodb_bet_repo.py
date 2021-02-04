@@ -19,8 +19,12 @@ from surebets_finder.shared.reflection import raises
 
 @inject(alias=BetRepository)
 class MongoDBBetRepository(BetRepository):
-    def __init__(self, database: Database):
+    def __init__(self, database: Database) -> None:
         self._collection = database["bet"]
+
+    def _to_decimal_128(self, value: Decimal) -> Decimal128:
+        quantize_value = Decimal(value.quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
+        return Decimal128(str(quantize_value))
 
     def _serialize(self, data: Any) -> Dict[Any, Any]:
         serialized = dict()
@@ -29,8 +33,7 @@ class MongoDBBetRepository(BetRepository):
             if isinstance(value, Enum):
                 serialized[field] = value.value
             elif isinstance(value, Decimal):
-                value = Decimal(value.quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
-                serialized[field] = Decimal128(str(value))
+                serialized[field] = self._to_decimal_128(value)
             else:
                 serialized[field] = value
 
@@ -41,8 +44,8 @@ class MongoDBBetRepository(BetRepository):
             id=document["_id"],
             opponent_1=document["opponent_1"],
             opponent_2=document["opponent_2"],
-            odds_1=Decimal(document["odds_1"]),
-            odds_2=Decimal(document["odds_2"]),
+            odds_1=document["odds_2"].to_decimal(),
+            odds_2=document["odds_2"].to_decimal(),
             category=Category(document["category"]),
             provider=Provider(document["provider"]),
             date=document["date"],
@@ -71,3 +74,30 @@ class MongoDBBetRepository(BetRepository):
         documents = self._collection.find({"date": {"$gte": datetime.utcnow()}})
 
         return [self._to_entity(document) for document in documents]
+
+    @raises(BetNotFoundError)
+    def find_one(self, params: Dict[str, Any]) -> Bet:
+        document = self._collection.find_one(params)
+
+        if not document:
+            raise BetNotFoundError(f"Bet with params `{params}` does not exist.")
+
+        return self._to_entity(document)
+
+    def save(self, bet: Bet) -> None:
+        query = {"_id": bet.id}
+        to_update = {
+            "$set": {
+                "opponent_1": bet.opponent_1,
+                "opponent_2": bet.opponent_2,
+                "odds_1": self._to_decimal_128(bet.odds_1),
+                "odds_2": self._to_decimal_128(bet.odds_2),
+                "category": bet.category.value,
+                "provider": bet.provider.value,
+                "date": bet.date,
+                "url": bet.url,
+                "updated_at": datetime.utcnow(),
+            }
+        }
+
+        self._collection.update_one(query, to_update)

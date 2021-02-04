@@ -47,3 +47,9 @@ $ docker-compose up
 ```bash
 $ poetry run pytest
 ```
+
+To run tests fast without integration tests which are slow you can run:
+
+```bash
+$ poetry run pytest -m "not slow"
+```

@@ -28,6 +28,11 @@ pytest-cov = "^2.11.0"
 line-length = 120
 target-version = ["py38"]
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
 [tool.poetry.scripts]
 surebets_finder = "surebets_finder.cli:main"
 [build-system]

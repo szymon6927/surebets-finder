@@ -1,9 +1,12 @@
 from typing import List, Protocol
 
+from typing_extensions import runtime_checkable
+
 from surebets_finder.shared.category import Category
 from surebets_finder.shared.reflection import raises
 
 
+@runtime_checkable
 class UrlStrategy(Protocol):
     def get_urls(self) -> List[str]:
         ...

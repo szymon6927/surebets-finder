@@ -1,4 +1,4 @@
-from typing import List, Protocol
+from typing import Any, Dict, List, Protocol
 
 from bson.objectid import ObjectId
 
@@ -13,4 +13,10 @@ class BetRepository(Protocol):  # pragma: no cover
         ...
 
     def get_all_which_are_in_future(self) -> List[Bet]:
+        ...
+
+    def find_one(self, params: Dict[str, Any]) -> Bet:
+        ...
+
+    def save(self, bet: Bet) -> None:
         ...
