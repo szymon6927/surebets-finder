@@ -57,7 +57,9 @@ class LVBetUrlStrategy(UrlStrategy):
     def get_urls(self) -> List[str]:
         if self._category == Category.ESPORT:
             return [
-                "https://app.lvbet.pl/_api/v1/offer/matches/?is_live=false&sports_groups_ids=41071,42981,43200,43415,44564,45586,45649,43555,43910,45644,45647,9870,9964,41592,44058,1168,45642,5878,2806,45595,45609,45619,45670&lang=pl"
+                "https://app.lvbet.pl/_api/v1/offer/matches/?is_live=false&sports_groups_ids=41592,44058,41604,37221,41575,22686,41588,30309,30496,19045,9152,10023,45661,31949,30934,5878,19835,45642,1168&lang=pl",  # LoL
+                "https://app.lvbet.pl/_api/v1/offer/matches/?is_live=false&sports_groups_ids=12007,43200,44564,45586,43555,45676,45719,45721,43673,45336&lang=pl",  # CS GO
+                "https://app.lvbet.pl/_api/v1/offer/matches/?is_live=false&sports_groups_ids=2806,45609&lang=pl",  # DOTA
             ]
 
         raise ValueError(

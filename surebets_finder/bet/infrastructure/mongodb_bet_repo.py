@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import Any, Dict, List
@@ -15,6 +15,7 @@ from surebets_finder.bet.domain.repositories import BetRepository
 from surebets_finder.shared.category import Category
 from surebets_finder.shared.provider import Provider
 from surebets_finder.shared.reflection import raises
+from surebets_finder.shared.serializers import dataclass_serializer
 
 
 @inject(alias=BetRepository)
@@ -22,29 +23,12 @@ class MongoDBBetRepository(BetRepository):
     def __init__(self, database: Database) -> None:
         self._collection = database["bet"]
 
-    def _to_decimal_128(self, value: Decimal) -> Decimal128:
-        quantize_value = Decimal(value.quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
-        return Decimal128(str(quantize_value))
-
-    def _serialize(self, data: Any) -> Dict[Any, Any]:
-        serialized = dict()
-
-        for field, value in data:
-            if isinstance(value, Enum):
-                serialized[field] = value.value
-            elif isinstance(value, Decimal):
-                serialized[field] = self._to_decimal_128(value)
-            else:
-                serialized[field] = value
-
-        return serialized
-
     def _to_entity(self, document: Dict[str, Any]) -> Bet:
         return Bet(
             id=document["_id"],
             opponent_1=document["opponent_1"],
             opponent_2=document["opponent_2"],
-            odds_1=document["odds_2"].to_decimal(),
+            odds_1=document["odds_1"].to_decimal(),
             odds_2=document["odds_2"].to_decimal(),
             category=Category(document["category"]),
             provider=Provider(document["provider"]),
@@ -64,14 +48,17 @@ class MongoDBBetRepository(BetRepository):
         return self._to_entity(document)
 
     def create(self, bet: Bet) -> None:
-        document = asdict(bet, dict_factory=self._serialize)
+        document = asdict(bet, dict_factory=dataclass_serializer)
 
         document["_id"] = document.pop("id")
 
         self._collection.insert_one(document)
 
     def get_all_which_are_in_future(self) -> List[Bet]:
-        documents = self._collection.find({"date": {"$gte": datetime.utcnow()}})
+        today_date = date.today()
+        date_time = datetime.combine(today_date, time.min)
+
+        documents = self._collection.find({"date": {"$gte": date_time}})
 
         return [self._to_entity(document) for document in documents]
 

@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Protocol
 
 from bson.objectid import ObjectId
 
-from surebets_finder.bet.domain.entities import Bet
+from surebets_finder.bet.domain.entities import Bet, SureBet
 
 
 class BetRepository(Protocol):  # pragma: no cover
@@ -19,4 +19,12 @@ class BetRepository(Protocol):  # pragma: no cover
         ...
 
     def save(self, bet: Bet) -> None:
+        ...
+
+
+class SureBetRepository(Protocol):
+    def create(self, sure_bet: SureBet) -> None:
+        ...
+
+    def get_all(self) -> List[SureBet]:
         ...

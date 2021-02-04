@@ -14,6 +14,8 @@ beautifulsoup4 = "^4.9.3"
 click = "^7.1.2"
 selenium = "^3.141.0"
 webdriver_manager = "^3.2.2"
+pytz = "^2020.5"
+sympy = "^1.7.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

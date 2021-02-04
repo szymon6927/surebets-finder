@@ -1,3 +1,4 @@
+import json
 from logging import Logger
 from typing import List
 
@@ -34,13 +35,15 @@ class LvBetClient(IWebClient):
             raise RequestError("Request Error!") from e
 
     def get_raw_data(self) -> str:
-        all_data = ""
+        all_data = []
 
         for url in self._urls:
             content = self._make_request(url)
-            all_data += content
+            content = json.loads(content)
+            for item in content:
+                all_data.append(item)
 
-        return all_data
+        return json.dumps(all_data)
 
     def __str__(self) -> str:
-        return "BetClickClient"
+        return "LvBetClient"

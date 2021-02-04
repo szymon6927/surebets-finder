@@ -4,6 +4,7 @@ from decimal import Decimal
 from logging import Logger
 from typing import Any, Dict, List, Protocol, Tuple
 
+import pytz
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from bson.objectid import ObjectId
@@ -12,9 +13,10 @@ from kink import inject
 from surebets_finder.bet.domain.entities import Bet
 from surebets_finder.shared.category import Category
 from surebets_finder.shared.provider import Provider
+from surebets_finder.shared.reflection import raises
 
 
-def _extract_oponents(str_which_contain_two_opponents: str) -> Tuple[str, str]:
+def _extract_opponents(str_which_contain_two_opponents: str) -> Tuple[str, str]:
     without_white_spaces = " ".join(str_which_contain_two_opponents.split())
 
     splited = without_white_spaces.split(" ")
@@ -49,7 +51,7 @@ class EFortunaBetFinder(BetFinder):
         opponents_names = item.select_one(".market-name").text
         opponents_names = opponents_names.strip()
 
-        return _extract_oponents(opponents_names)
+        return _extract_opponents(opponents_names)
 
     def _find_odds(self, item: Tag) -> Tuple[Decimal, Decimal]:
         odds = item.select(".odds-value")
@@ -65,7 +67,12 @@ class EFortunaBetFinder(BetFinder):
         current_year = datetime.utcnow().strftime("%Y")
         date_str = date_str.replace(" ", current_year)
 
-        return datetime.strptime(date_str, "%d.%m.%Y%H:%M")
+        data_time_obj = datetime.strptime(date_str, "%d.%m.%Y%H:%M")
+        timezone = pytz.timezone("Europe/Warsaw")
+
+        data_time_obj_with_timezone = timezone.localize(data_time_obj)
+
+        return data_time_obj_with_timezone.astimezone(pytz.utc)
 
     def _find_url(self, item: Tag) -> str:
         url_html_tag = item.select_one("a.event-name")
@@ -119,6 +126,24 @@ class BetClickBetFinder(BetFinder):
     def __init__(self, logger: Logger) -> None:
         self._logger = logger
 
+    @raises(ValueError)
+    def _find_odds_1(self, item: Dict[str, Any]) -> Decimal:
+        opponent_1 = item["contestants"][0]["shortName"]
+        for selection in item["markets"][0]["selections"]:
+            if selection["name"] == opponent_1:
+                return Decimal(selection["odds"])
+
+        raise ValueError(f"Can not find odds1!")
+
+    @raises(ValueError)
+    def _find_odds_2(self, item: Dict[str, Any]) -> Decimal:
+        opponent_2 = item["contestants"][1]["shortName"]
+        for selection in item["markets"][0]["selections"]:
+            if selection["name"] == opponent_2:
+                return Decimal(selection["odds"])
+
+        raise ValueError(f"Can not find odds2!")
+
     def find_bets(self, content: str, category: Category) -> List[Bet]:
         self._logger.info("Finding bets for betclick.pl !")
 
@@ -127,28 +152,31 @@ class BetClickBetFinder(BetFinder):
         bets = []
 
         for item in json_content:  # type: Dict[str, Any]
-            if item.get("markets"):
-                opponent_1 = item["contestants"][0]["name"].lower()
-                opponent_2 = item["contestants"][1]["name"].lower()
-                odds_1 = Decimal(item["markets"][0]["selections"][0]["odds"])
-                odds_2 = Decimal(item["markets"][0]["selections"][1]["odds"])
-                date = datetime.strptime(item["date"], "%Y-%m-%dT%H:%M:%SZ")
-                url = f'{item["competition"]["relativeDesktopUrl"]}/{item["relativeDesktopUrl"]}'
+            try:
+                if item.get("markets"):
+                    opponent_1 = item["contestants"][0]["name"].lower()
+                    opponent_2 = item["contestants"][1]["name"].lower()
+                    odds_1 = self._find_odds_1(item)
+                    odds_2 = self._find_odds_2(item)
+                    date = datetime.strptime(item["date"], "%Y-%m-%dT%H:%M:%SZ")
+                    url = f'{item["competition"]["relativeDesktopUrl"]}/{item["relativeDesktopUrl"]}'
 
-                bet = Bet(
-                    id=ObjectId(),
-                    opponent_1=opponent_1,
-                    opponent_2=opponent_2,
-                    odds_1=odds_1,
-                    odds_2=odds_2,
-                    category=category,
-                    provider=Provider.BETCLICK,
-                    date=date,
-                    url=url,
-                    updated_at=datetime.utcnow(),
-                )
+                    bet = Bet(
+                        id=ObjectId(),
+                        opponent_1=opponent_1,
+                        opponent_2=opponent_2,
+                        odds_1=odds_1,
+                        odds_2=odds_2,
+                        category=category,
+                        provider=Provider.BETCLICK,
+                        date=date,
+                        url=url,
+                        updated_at=datetime.utcnow(),
+                    )
 
-                bets.append(bet)
+                    bets.append(bet)
+            except ValueError as e:
+                self._logger.error(f"Can not fetch all of the information from `{item}` due to {str(e)}.")
 
         return bets
 
@@ -176,6 +204,26 @@ class LVBetBetFinder(BetFinder):
 
         return f'{first_part_of_url}/--/{ids_part_of_url}/{item["id"]}'
 
+    @raises(ValueError)
+    def _find_odds_1(self, item: Dict[str, Any]) -> Decimal:
+        opponent_1 = item["participants"]["home"]
+
+        for selection in item["primaryMarkets"][0]["selections"]:
+            if selection["name"] == opponent_1:
+                return Decimal(selection["rate"]["decimal"])
+
+        raise ValueError(f"Can not find odds1!")
+
+    @raises(ValueError)
+    def _find_odds_2(self, item: Dict[str, Any]) -> Decimal:
+        opponent_2 = item["participants"]["away"]
+
+        for selection in item["primaryMarkets"][0]["selections"]:
+            if selection["name"] == opponent_2:
+                return Decimal(selection["rate"]["decimal"])
+
+        raise ValueError(f"Can not find odds12")
+
     def find_bets(self, content: str, category: Category) -> List[Bet]:
         self._logger.info("Finding bets for lvbet.pl !")
 
@@ -185,10 +233,10 @@ class LVBetBetFinder(BetFinder):
 
         for item in json_content:  # type: Dict[str, Any]
             try:
-                opponent_1 = item["participants"]["away"].lower()
-                opponent_2 = item["participants"]["home"].lower()
-                odds_1 = Decimal(item["primaryMarkets"][0]["selections"][0]["rate"]["decimal"])
-                odds_2 = Decimal(item["primaryMarkets"][0]["selections"][1]["rate"]["decimal"])
+                opponent_1 = item["participants"]["home"].lower()
+                opponent_2 = item["participants"]["away"].lower()
+                odds_1 = self._find_odds_1(item)
+                odds_2 = self._find_odds_2(item)
                 date = datetime.fromisoformat(item["date"])
 
                 bet = Bet(
@@ -198,14 +246,14 @@ class LVBetBetFinder(BetFinder):
                     odds_1=odds_1,
                     odds_2=odds_2,
                     category=category,
-                    provider=Provider.BETCLICK,
+                    provider=Provider.LVBET,
                     date=date,
                     url=self._build_url(item, opponent_1, opponent_2),
                     updated_at=datetime.utcnow(),
                 )
 
                 bets.append(bet)
-            except (IndexError, KeyError) as e:
+            except (IndexError, KeyError, ValueError) as e:
                 self._logger.error(f"Can not fetch all of the information from `{item}` due to {str(e)}.")
 
         return bets

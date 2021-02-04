@@ -94,7 +94,7 @@ def test_get_all_bets_which_are_in_future(mongodb: Database) -> None:
     in_future = repo.get_all_which_are_in_future()
 
     # then
-    assert len(in_future) == 5
+    assert len(in_future) == 6
 
 
 def test_find_one(mongodb: Database, dummy_bet_document: Dict[str, Any]) -> None:
